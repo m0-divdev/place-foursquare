@@ -1,13 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  QueryRouterService,
-  QueryAnalysis,
-  QueryType,
-} from './query-router.service';
-import {
-  AgentCoordinationService,
-  ExecutionResult,
-} from './agent-coordination.service';
+import { QueryRouterService } from './query-router.service';
+import { AgentCoordinationService } from './agent-coordination.service';
 import { ToolProxyService } from './tool-proxy.service';
 
 export interface IntelligentQueryRequest {
@@ -27,8 +20,8 @@ export interface IntelligentQueryRequest {
 }
 
 export interface IntelligentQueryResponse {
-  analysis: QueryAnalysis;
-  executionResult: ExecutionResult;
+  analysis: any; // Simplified - was QueryAnalysis
+  executionResult: any; // Simplified - was ExecutionResult
   optimizations: {
     cacheHits: number;
     parallelExecutions: number;
@@ -70,9 +63,8 @@ export class IntelligentOrchestratorService {
 
       // 4. Execute coordinated multi-agent workflow
       const executionResult =
-        await this.agentCoordination.executeCoordinatedQuery(
+        await this.agentCoordination.executeIntelligentQuery(
           request.query,
-          analysis,
           request.sessionId,
         );
 
@@ -152,13 +144,14 @@ export class IntelligentOrchestratorService {
   }
 
   private applyUserContext(
-    analysis: QueryAnalysis,
+    analysis: any,
     context?: IntelligentQueryRequest['context'],
   ): void {
     if (!context) return;
 
     // Enhance analysis with user location
-    if (context.userLocation && !analysis.extractedEntities.locations?.length) {
+    if (context.userLocation && !analysis.extractedEntities?.locations?.length) {
+      analysis.extractedEntities = analysis.extractedEntities || {};
       analysis.extractedEntities.locations = [
         `${context.userLocation.lat},${context.userLocation.lon}`,
       ];
@@ -169,15 +162,15 @@ export class IntelligentOrchestratorService {
       switch (context.domainFocus) {
         case 'places':
           if (
-            analysis.type.includes('SEARCH') ||
-            analysis.type.includes('COMPREHENSIVE')
+            analysis.type?.includes('SEARCH') ||
+            analysis.type?.includes('COMPREHENSIVE')
           ) {
-            analysis.confidence = Math.min(analysis.confidence + 0.1, 1.0);
+            analysis.confidence = Math.min((analysis.confidence || 0.8) + 0.1, 1.0);
           }
           break;
         case 'analytics':
-          if (analysis.type === QueryType.ANALYTICS) {
-            analysis.confidence = Math.min(analysis.confidence + 0.2, 1.0);
+          if (analysis.type === 'ANALYTICS') {
+            analysis.confidence = Math.min((analysis.confidence || 0.8) + 0.2, 1.0);
           }
           break;
       }
@@ -185,7 +178,7 @@ export class IntelligentOrchestratorService {
   }
 
   private async optimizeExecution(
-    analysis: QueryAnalysis,
+    analysis: any,
     preferences?: IntelligentQueryRequest['preferences'],
   ): Promise<void> {
     if (!preferences) return;
@@ -193,7 +186,7 @@ export class IntelligentOrchestratorService {
     // Pre-warm cache for common tools based on extracted entities
     if (
       preferences.cacheStrategy === 'aggressive' &&
-      analysis.extractedEntities.locations
+      analysis.extractedEntities?.locations
     ) {
       await this.preWarmCache(analysis.extractedEntities);
     }
@@ -205,7 +198,7 @@ export class IntelligentOrchestratorService {
   }
 
   private async preWarmCache(
-    entities: QueryAnalysis['extractedEntities'],
+    entities: any,
   ): Promise<void> {
     const preWarmTasks: Promise<any>[] = [];
 
@@ -236,23 +229,19 @@ export class IntelligentOrchestratorService {
 
   private async executeWithProgress(
     query: string,
-    analysis: QueryAnalysis,
+    analysis: any,
     sessionId?: string,
     onProgress?: (update: Partial<IntelligentQueryResponse>) => void,
-  ): Promise<ExecutionResult> {
+  ): Promise<any> {
     // This would integrate with the agent coordination service
     // to provide real-time progress updates
-    return this.agentCoordination.executeCoordinatedQuery(
-      query,
-      analysis,
-      sessionId,
-    );
+    return this.agentCoordination.executeIntelligentQuery(query, sessionId);
   }
 
   private async generateRecommendations(
     request: IntelligentQueryRequest,
-    analysis: QueryAnalysis,
-    result: ExecutionResult,
+    analysis: any,
+    result: any,
   ): Promise<IntelligentQueryResponse['recommendations']> {
     const relatedQueries: string[] = [];
     const suggestedActions: string[] = [];
@@ -294,14 +283,23 @@ export class IntelligentOrchestratorService {
     return stats.size;
   }
 
-  private getParallelExecutionCount(result: ExecutionResult): number {
+  private getParallelExecutionCount(result: any): number {
     // Count parallel phases from execution result
-    return Array.from(result.phaseResults.keys()).filter(
-      (phase) =>
-        phase.includes('parallel') ||
-        phase.includes('map_generation') ||
-        phase.includes('summarization'),
-    ).length;
+    if (!result || typeof result !== 'object') return 0;
+
+    // Check if result has any phase information
+    if (result.phaseResults && typeof result.phaseResults === 'object') {
+      const phases = Array.from(result.phaseResults.keys());
+      return phases.filter((phase: string) =>
+        phase && typeof phase === 'string' && (
+          phase.includes('parallel') ||
+          phase.includes('map_generation') ||
+          phase.includes('summarization')
+        )
+      ).length;
+    }
+
+    return 0;
   }
 
   // Utility methods for direct tool access

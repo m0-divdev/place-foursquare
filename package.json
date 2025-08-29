@@ -17,7 +17,10 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "mastra:dev": "mastra dev",
+    "mastra:test": "mastra test",
+    "agent:test": "node -e \"import('./dist/mastra/agents/orchestrator-agent.js').then(async (m) => { const response = await m.orchestratorAgent.generate([{role: 'user', content: 'A client wants to establish a new fast-food franchise in Austin, Texas. Find an area with high daytime foot traffic, but low competition from other fast-food restaurants.'}]); console.log('Agent Response:', JSON.stringify(JSON.parse(response.text), null, 2)); }).catch(console.error)\""
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.0.0",
